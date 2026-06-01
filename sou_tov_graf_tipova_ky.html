@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Součtový graf tipovačky</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #f8fafc; }
+        /* Vynucení správné velikosti grafu v flex kontejneru */
+        .chart-container { position: relative; height: 100%; width: 100%; min-height: 500px; }
+    </style>
+</head>
+<body class="h-screen w-full flex flex-col p-2 md:p-6">
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-6 flex-1 flex flex-col h-full">
+        
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Tipovačka MS 2026</h1>
+                <p class="text-sm text-gray-500 mt-1">Interaktivní vývoj bodů jednotlivých účastníků</p>
+            </div>
+            
+            <div class="flex flex-wrap gap-2">
+                <button onclick="showTop5()" class="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition shadow-sm">
+                    🏆 Zobrazit Top 5
+                </button>
+                <button onclick="toggleAll(true)" class="px-4 py-2 text-sm font-medium bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition shadow-sm">
+                    Zobrazit všechny
+                </button>
+                <button onclick="toggleAll(false)" class="px-4 py-2 text-sm font-medium bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition shadow-sm">
+                    Skrýt všechny
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-1 w-full relative">
+            <div class="chart-container">
+                <canvas id="pointsChart"></canvas>
+            </div>
+        </div>
+        
+    </div>
+
+    <script>
+        // Data přímo přepočítaná z detailů v listu 'TIPY'
+        const rawData = {
+            "labels": ["Dánsko", "Slovinsko", "Švédsko", "Itálie", "Slovensko", "Norsko", "Kanada", "Umístění ČR ve skupině:", "Soupeř pro čtvrtfinále:", "Celkový vítěz MS:", "Nejlepší český střelec:", "Finsko"], 
+            "datasets": [
+                {"label": "Honza", "data": [2.0, 2.0, 2.0, 4.0, 4.0, 4.0, 6.0, 9.0, 12.0, 12.0, 12.0, 12.0]}, 
+                {"label": "Lukáš S.", "data": [0.0, 0.0, 0.0, 2.0, 4.0, 4.0, 6.0, 9.0, 9.0, 9.0, 9.0, 11.0]}, 
+                {"label": "Kuba Dzi.", "data": [0.0, 0.0, 0.0, 2.0, 10.0, 10.0, 12.0, 15.0, 15.0, 15.0, 15.0, 15.0]}, 
+                {"label": "Tomáš Kantor", "data": [2.0, 2.0, 2.0, 4.0, 4.0, 4.0, 6.0, 9.0, 12.0, 12.0, 12.0, 12.0]}, 
+                {"label": "Jakub Venzara", "data": [2.0, 2.0, 2.0, 4.0, 12.0, 12.0, 20.0, 23.0, 23.0, 23.0, 23.0, 23.0]}, 
+                {"label": "Zuzka Klegová", "data": [2.0, 4.0, 4.0, 6.0, 6.0, 6.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0]}, 
+                {"label": "Daniel Hrbáč", "data": [2.0, 2.0, 2.0, 4.0, 4.0, 4.0, 6.0, 6.0, 9.0, 9.0, 9.0, 9.0]}, 
+                {"label": "Jakub Q.K.", "data": [2.0, 2.0, 2.0, 4.0, 4.0, 4.0, 6.0, 9.0, 9.0, 9.0, 12.0, 12.0]}, 
+                {"label": "Petr Bubník", "data": [2.0, 2.0, 2.0, 4.0, 12.0, 12.0, 14.0, 17.0, 17.0, 17.0, 20.0, 22.0]}, 
+                {"label": "Patrik Kohut", "data": [2.0, 2.0, 4.0, 6.0, 8.0, 8.0, 10.0, 10.0, 10.0, 10.0, 13.0, 13.0]}, 
+                {"label": "Míra Mrňák", "data": [8.0, 8.0, 8.0, 10.0, 12.0, 12.0, 14.0, 17.0, 17.0, 17.0, 20.0, 20.0]}, 
+                {"label": "Radim Koláček", "data": [2.0, 2.0, 2.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0]}, 
+                {"label": "Markéta Zlotá", "data": [2.0, 2.0, 2.0, 4.0, 6.0, 6.0, 8.0, 8.0, 11.0, 11.0, 11.0, 11.0]}, 
+                {"label": "Hana Chudová", "data": [2.0, 2.0, 2.0, 4.0, 6.0, 6.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0]}, 
+                {"label": "Šimon Géryk", "data": [2.0, 2.0, 2.0, 4.0, 4.0, 4.0, 12.0, 15.0, 15.0, 15.0, 18.0, 18.0]}, 
+                {"label": "Radek Váni", "data": [2.0, 2.0, 2.0, 4.0, 4.0, 4.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0]}, 
+                {"label": "Panoš Michal", "data": [2.0, 2.0, 4.0, 6.0, 8.0, 8.0, 10.0, 10.0, 13.0, 13.0, 13.0, 13.0]}, 
+                {"label": "Martin Chmiel", "data": [0.0, 0.0, 0.0, 8.0, 8.0, 10.0, 12.0, 15.0, 18.0, 18.0, 18.0, 20.0]}, 
+                {"label": "Bůžek", "data": [2.0, 2.0, 2.0, 4.0, 4.0, 4.0, 6.0, 9.0, 9.0, 9.0, 9.0, 11.0]}, 
+                {"label": "Koselek", "data": [0.0, 0.0, 0.0, 2.0, 2.0, 2.0, 4.0, 7.0, 7.0, 7.0, 10.0, 10.0]}, 
+                {"label": "Hoza", "data": [0.0, 0.0, 2.0, 10.0, 18.0, 18.0, 20.0, 23.0, 23.0, 23.0, 23.0, 25.0]}
+            ]
+        };
+
+        // Paleta barev (Tailwind 500/600 odstíny pro hezký vzhled)
+        const colors = [
+            '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#84CC16', 
+            '#22C55E', '#10B981', '#14B8A6', '#06B6D4', '#0EA5E9', 
+            '#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF', 
+            '#EC4899', '#F43F5E', '#9CA3AF', '#57534E', '#1F2937', 
+            '#000000'
+        ];
+
+        // Zpracování dat (zamezení propadu křivky na 0 u zápasů, které se ještě nehrály - držíme aktuální body)
+        rawData.datasets.forEach((ds, i) => {
+            let currentMax = 0;
+            ds.data = ds.data.map(val => {
+                if (val < currentMax && val === 0) {
+                    return currentMax; // Událost ještě nenastala, držíme získané body
+                }
+                currentMax = Math.max(currentMax, val);
+                return currentMax;
+            });
+
+            // Přiřazení stylů pro každou křivku
+            const color = colors[i % colors.length];
+            ds.borderColor = color;
+            ds.backgroundColor = color;
+            ds.borderWidth = 2;
+            ds.pointRadius = 4;
+            ds.pointHoverRadius = 7;
+            ds.fill = false;
+            ds.tension = 0.1; // Lehká křivka pro modernější vzhled
+            ds.hidden = false;
+        });
+
+        // Inicializace Chart.js
+        const ctx = document.getElementById('pointsChart').getContext('2d');
+        const isMobile = window.innerWidth < 768;
+
+        let myChart = new Chart(ctx, {
+            type: 'line',
+            data: rawData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: {
+                        position: isMobile ? 'bottom' : 'right',
+                        labels: {
+                            usePointStyle: true,
+                            boxWidth: 8,
+                            padding: 15,
+                            font: { family: 'Inter', size: 12 }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(17, 24, 39, 0.9)',
+                        titleFont: { family: 'Inter', size: 14 },
+                        bodyFont: { family: 'Inter', size: 13 },
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                return ` ${context.dataset.label}: ${context.parsed.y} b.`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: '#f3f4f6',
+                            drawBorder: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Získané body',
+                            font: { family: 'Inter', weight: 'bold' }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    }
+                }
+            }
+        });
+
+        // Funkce pro zobrazení/skrytí všech
+        function toggleAll(show) {
+            myChart.data.datasets.forEach(ds => {
+                ds.hidden = !show;
+            });
+            myChart.update();
+        }
+
+        // Funkce pro rychlé zobrazení jen Top 5 účastníků podle aktuálních bodů
+        function showTop5() {
+            // Získání konečného skóre každého účastníka
+            const lastIndexes = myChart.data.datasets.map((ds, index) => {
+                return { 
+                    index: index, 
+                    lastVal: ds.data[ds.data.length - 1] 
+                };
+            });
+            
+            // Seřazení od nejvyššího po nejnižší
+            lastIndexes.sort((a, b) => b.lastVal - a.lastVal);
+            
+            // Výběr indexů Top 5 (může jich být víc, pokud je shoda bodů, ale vezmeme prvních 5)
+            const top5 = lastIndexes.slice(0, 5).map(x => x.index);
+            
+            // Skrytí všech kromě Top 5
+            myChart.data.datasets.forEach((ds, index) => {
+                ds.hidden = !top5.includes(index);
+            });
+            myChart.update();
+        }
+    </script>
+</body>
+</html>
